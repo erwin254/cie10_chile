@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CIE-10 y SNOMED-CT Chile · Autocompletado</title>
+  <meta name="description" content="Busca y autocompleta códigos CIE-10 y SNOMED-CT vigentes en Chile.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #10243f;
+      --ink: #1c2a3a;
+      --muted: #5b6b7c;
+      --line: #d9e2ec;
+      --paper: #f4f7fb;
+      --card: #ffffff;
+      --teal: #0f766e;
+      --teal-dark: #115e59;
+      --red: #c81e1e;
+      --blue: #1d4e89;
+      --shadow: 0 18px 50px rgba(16, 36, 63, .12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Source Sans 3", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #dbeafe 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #ccfbf1 0%, transparent 50%),
+        var(--paper);
+    }
+
+    .wrap {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 72px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .flag {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 18px rgba(16, 36, 63, .18);
+      flex: none;
+      background: #fff;
+    }
+
+    .flag svg { display: block; width: 100%; height: 100%; }
+
+    h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      letter-spacing: -.03em;
+      color: var(--navy);
+    }
+
+    .sub {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .pill {
+      background: #ecfeff;
+      color: var(--teal-dark);
+      border: 1px solid #99f6e4;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin: 0 0 18px;
+      padding: 5px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      width: fit-content;
+      box-shadow: 0 8px 20px rgba(16, 36, 63, .06);
+    }
+
+    .tabs button {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .tabs button.active {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .search-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 6px);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+    }
+
+    .field {
+      position: relative;
+    }
+
+    #q {
+      width: 100%;
+      border: 1.5px solid #c5d4e3;
+      border-radius: 14px;
+      padding: 16px 48px 16px 16px;
+      font: inherit;
+      font-size: 1.2rem;
+      color: var(--navy);
+      outline: none;
+      background: #fbfdff;
+    }
+
+    #q:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(15, 118, 110, .12);
+      background: #fff;
+    }
+
+    .spinner {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      margin-top: -9px;
+      border: 2px solid #cce7e4;
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      display: none;
+      animation: spin .7s linear infinite;
+    }
+
+    .spinner.on { display: block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint {
+      margin: 10px 2px 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .results {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+      max-height: 560px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      display: none;
+    }
+
+    .results.open { display: block; }
+
+    .results li button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 12px;
+      cursor: pointer;
+      font: inherit;
+      border-bottom: 1px solid #eef3f8;
+    }
+
+    .results li:last-child button { border-bottom: 0; }
+    .results li button:hover,
+    .results li button.active { background: #f0fdfa; }
+
+    .code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      color: var(--teal-dark);
+      font-size: .95rem;
+    }
+
+    .cie-badge {
+      display: inline-block;
+      margin-left: 0;
+      margin-top: 4px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: .78rem;
+      color: var(--teal-dark);
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+
+    .cie-badge.vacio {
+      background: #f8fafc;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+
+    .desc { color: var(--ink); }
+    .meta {
+      grid-column: 2;
+      color: var(--muted);
+      font-size: .8rem;
+      margin-top: 2px;
+    }
+
+    mark {
+      background: #fde68a;
+      color: inherit;
+      padding: 0 1px;
+      border-radius: 3px;
+    }
+
+    .empty, .error {
+      margin: 12px 2px 0;
+      color: var(--muted);
+    }
+
+    .error { color: var(--red); }
+
+    .selected {
+      margin-top: 22px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(16, 36, 63, .06);
+      display: none;
+    }
+
+    .selected.show { display: block; }
+
+    .selected-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .selected h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+      color: var(--navy);
+    }
+
+    .codigo-grande {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 2rem;
+      color: var(--teal-dark);
+      letter-spacing: -.04em;
+      margin: 0;
+    }
+
+    .uso {
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .uso.legado { background: #f1f5f9; color: #475569; }
+
+    button.copy, button.clear {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--navy);
+    }
+
+    button.copy:hover, button.clear:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .kv {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .kv span {
+      display: block;
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 4px;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: .85rem;
+      line-height: 1.45;
+    }
+
+    footer a { color: var(--blue); }
+
+    @media (max-width: 640px) {
+      header { flex-direction: column; }
+      .results li button { grid-template-columns: 1fr; gap: 4px; }
+      .codigo-grande { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="flag" aria-hidden="true">
+          <svg viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+            <rect width="46" height="23" fill="#fff"/>
+            <rect y="23" width="46" height="23" fill="#d52b1e"/>
+            <rect width="18" height="23" fill="#0039a6"/>
+            <polygon fill="#fff" points="9,4.8 10.5,8.8 14.8,8.8 11.4,11.3 12.7,15.4 9,12.9 5.3,15.4 6.6,11.3 3.2,8.8 7.5,8.8"/>
+          </svg>
+        </div>
+        <div>
+          <h1 id="titulo">CIE-10 Chile</h1>
+          <p class="sub" id="subtitulo">Escribe un diagnóstico o un código y el sistema lo completa.</p>
+        </div>
+      </div>
+      <div class="pill" id="estado">Cargando catálogo…</div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="Catálogo">
+      <button type="button" role="tab" id="tab-cie10" class="active" aria-selected="true">CIE-10</button>
+      <button type="button" role="tab" id="tab-snomed" aria-selected="false">SNOMED-CT</button>
+    </nav>
+
+    <section class="search-card">
+      <label for="q">Buscar diagnóstico</label>
+      <div class="field">
+        <input id="q" type="search" autocomplete="off" spellcheck="false"
+          placeholder="Ej: diabetes, neumonía, E11.9, HTA, EPOC…"
+          aria-autocomplete="list" aria-controls="resultados" aria-expanded="false">
+        <span class="spinner" id="spinner"></span>
+      </div>
+      <p class="hint" id="hint">Puedes buscar por texto, sinónimo clínico (HTA, DM2, IAM) o código CIE-10.</p>
+      <ul class="results" id="resultados" role="listbox"></ul>
+      <p class="empty" id="vacio" hidden>No hay coincidencias. Prueba con menos palabras o el código.</p>
+      <p class="error" id="error" hidden></p>
+    </section>
+
+    <section class="selected" id="ficha">
+      <div class="selected-top">
+        <div>
+          <p class="codigo-grande" id="ficha-codigo"></p>
+          <h2 id="ficha-desc"></h2>
+          <span class="uso" id="ficha-uso"></span>
+        </div>
+        <button class="copy" id="copiar" type="button">Copiar código</button>
+      </div>
+      <div class="grid">
+        <div class="kv"><span id="ficha-l1">Categoría</span><strong id="ficha-cat"></strong></div>
+        <div class="kv"><span id="ficha-l2">Sección</span><strong id="ficha-sec"></strong></div>
+        <div class="kv"><span id="ficha-l3">Capítulo</span><strong id="ficha-cap"></strong></div>
+      </div>
+    </section>
+
+    <footer>
+      API libre en <a href="api/">/api/</a> · <span id="pie-fuente">Catálogo MINSAL/DEIS Chile (CIE-10 v2018).</span>
+      Útil para orientación clínica y registro; no reemplaza las normas oficiales de codificación.
+    </footer>
+  </div>
+
+  <script>
+    const API = new URL("api/", window.location.href).href;
+    const $q = document.getElementById("q");
+    const $resultados = document.getElementById("resultados");
+    const $spinner = document.getElementById("spinner");
+    const $vacio = document.getElementById("vacio");
+    const $error = document.getElementById("error");
+    const $ficha = document.getElementById("ficha");
+    const $estado = document.getElementById("estado");
+
+    const catalogos = {
+      cie10: {
+        titulo: "CIE-10 Chile",
+        subtitulo: "Escribe un diagnóstico o un código y el sistema lo completa.",
+        placeholder: "Ej: diabetes, neumonía, E11.9, HTA, EPOC…",
+        hint: "Puedes buscar por texto, sinónimo clínico (HTA, DM2, IAM) o código CIE-10.",
+        pie: "Catálogo MINSAL/DEIS Chile (CIE-10 v2018).",
+        buscar: "buscar?q=",
+        salud: "salud",
+        debounce: 140,
+        labels: ["Categoría", "Sección", "Capítulo"],
+        uso: {
+          principal: "Uso clínico en Chile",
+          causa_externa: "Causa externa",
+          etiologico: "Etiológico",
+          "causa_externa | principal": "Causa externa / principal",
+          legado: "Categoría (catálogo)"
+        }
+      },
+      snomed: {
+        titulo: "SNOMED-CT Chile",
+        subtitulo: "Escribe un hallazgo clínico y el sistema completa el concepto SNOMED.",
+        placeholder: "Ej: diabetes tipo 2, neumonía, hipertensión…",
+        hint: "Cada concepto SNOMED se cruza con el CIE-10 de Chile para mostrar el código equivalente.",
+        pie: "SNOMED CT® Edición Chile vía tx.hl7chile.cl, cruzado con CIE-10 MINSAL/DEIS.",
+        buscar: "snomed/buscar?q=",
+        salud: "snomed/salud",
+        debounce: 160,
+        labels: ["CIE-10", "Descripción CIE-10", "Tipo"],
+        uso: { principal: "Concepto activo" }
+      }
+    };
+
+    let catalogo = "cie10";
+    let items = [];
+    let seleccionado = null;
+    let activo = -1;
+    let timer = null;
+    let abortar = null;
+
+    function cfg() { return catalogos[catalogo]; }
+
+    function escapar(texto) {
+      return texto.replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function resaltar(texto, consulta) {
+      const limpio = consulta.trim();
+      if (!limpio) return escapar(texto);
+      const partes = limpio.split(/\s+/).filter(Boolean).map(escapar);
+      let html = escapar(texto);
+      for (const parte of partes) {
+        const rx = new RegExp(`(${parte})`, "ig");
+        html = html.replace(rx, "<mark>$1</mark>");
+      }
+      return html;
+    }
+
+    function mostrarError(msg) {
+      $error.hidden = !msg;
+      $error.textContent = msg || "";
+    }
+
+    function aplicarCatalogo(nombre, { persistir = true } = {}) {
+      catalogo = nombre === "snomed" ? "snomed" : "cie10";
+      const actual = cfg();
+      document.getElementById("titulo").textContent = actual.titulo;
+      document.getElementById("subtitulo").textContent = actual.subtitulo;
+      document.getElementById("hint").textContent = actual.hint;
+      document.getElementById("pie-fuente").textContent = actual.pie;
+      document.getElementById("ficha-l1").textContent = actual.labels[0];
+      document.getElementById("ficha-l2").textContent = actual.labels[1];
+      document.getElementById("ficha-l3").textContent = actual.labels[2];
+      $q.placeholder = actual.placeholder;
+      $q.value = "";
+      items = [];
+      activo = -1;
+      $ficha.classList.remove("show");
+      pintarLista();
+      $vacio.hidden = true;
+      mostrarError("");
+      document.getElementById("tab-cie10").classList.toggle("active", catalogo === "cie10");
+      document.getElementById("tab-snomed").classList.toggle("active", catalogo === "snomed");
+      document.getElementById("tab-cie10").setAttribute("aria-selected", catalogo === "cie10" ? "true" : "false");
+      document.getElementById("tab-snomed").setAttribute("aria-selected", catalogo === "snomed" ? "true" : "false");
+      if (persistir) history.replaceState(null, "", "#" + catalogo);
+      $estado.textContent = "Consultando…";
+      salud();
+      $q.focus();
+    }
+
+    async function salud() {
+      try {
+        const res = await fetch(API + cfg().salud);
+        const data = await res.json();
+        if (!data.ok && data.estado !== "ok") throw new Error();
+        if (catalogo === "cie10") {
+          $estado.textContent = Number(data.total || 0).toLocaleString("es-CL") + " códigos";
+        } else {
+          $estado.textContent = data.edicion || "SNOMED-CT";
+        }
+      } catch {
+        $estado.textContent = "API no disponible";
+      }
+    }
+
+    function pintarLista() {
+      $resultados.innerHTML = "";
+      $resultados.classList.toggle("open", items.length > 0);
+      $q.setAttribute("aria-expanded", items.length > 0 ? "true" : "false");
+      $vacio.hidden = items.length > 0 || $q.value.trim().length < 2 || $ficha.classList.contains("show");
+
+      items.forEach((item, i) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("role", "option");
+        const cieBadge = catalogo === "snomed"
+          ? (item.cie10
+              ? `<span class="cie-badge">CIE-10 ${escapar(item.cie10)}</span>`
+              : `<span class="cie-badge vacio">Sin CIE-10</span>`)
+          : "";
+        const meta = catalogo === "snomed"
+          ? [item.cie10 ? item.cie10_descripcion : "", item.tipo || item.capitulo].filter(Boolean).join(" · ")
+          : [item.capitulo, item.capitulo_nombre].filter(Boolean).join(" · ");
+        btn.innerHTML = `
+          <span class="code">${escapar(item.codigo)}</span>
+          <span>
+            <span class="desc">${resaltar(item.descripcion, $q.value)}</span>
+            ${cieBadge}
+            <span class="meta">${escapar(meta)}</span>
+          </span>`;
+        btn.addEventListener("mousedown", (e) => e.preventDefault());
+        btn.addEventListener("click", () => seleccionar(item));
+        if (i === activo) btn.classList.add("active");
+        li.appendChild(btn);
+        $resultados.appendChild(li);
+      });
+    }
+
+    async function seleccionar(item) {
+      items = [];
+      activo = -1;
+      if (catalogo === "snomed") {
+        try {
+          const res = await fetch(API + "snomed/codigo/" + encodeURIComponent(item.codigo));
+          const data = await res.json();
+          if (data.ok && data.item) {
+            item = Object.assign({}, item, data.item);
+          }
+        } catch {
+          /* se usa el resultado de la lista */
+        }
+      }
+      seleccionado = item;
+      $q.value = item.codigo + " — " + item.descripcion;
+      document.getElementById("ficha-codigo").textContent = item.codigo;
+      document.getElementById("ficha-desc").textContent = item.descripcion;
+      const uso = document.getElementById("ficha-uso");
+      if (catalogo === "snomed") {
+        document.getElementById("ficha-cat").textContent = item.cie10 || "Sin mapeo";
+        document.getElementById("ficha-sec").textContent = item.cie10_descripcion || "—";
+        document.getElementById("ficha-cap").textContent = item.tipo || item.capitulo || "SNOMED CT";
+        uso.textContent = item.cie10 ? "CIE-10 " + item.cie10 : "Sin CIE-10";
+        uso.classList.toggle("legado", !item.cie10);
+        document.getElementById("copiar").textContent = item.cie10 ? "Copiar CIE-10" : "Copiar SNOMED";
+      } else {
+        document.getElementById("ficha-cat").textContent = item.categoria || "—";
+        document.getElementById("ficha-sec").textContent = item.seccion || "—";
+        document.getElementById("ficha-cap").textContent =
+          [item.capitulo, item.capitulo_nombre].filter(Boolean).join(" · ") || "—";
+        uso.textContent = cfg().uso[item.uso] || item.uso || "Concepto";
+        uso.classList.toggle("legado", item.uso === "legado");
+        document.getElementById("copiar").textContent = "Copiar código";
+      }
+      $ficha.classList.add("show");
+      pintarLista();
+      $q.focus();
+    }
+
+    async function buscar(texto) {
+      if (abortar) abortar.abort();
+      abortar = new AbortController();
+      $spinner.classList.add("on");
+      mostrarError("");
+      try {
+        const url = API + cfg().buscar + encodeURIComponent(texto) + "&limite=" + (catalogo === "snomed" ? "30" : "18");
+        const res = await fetch(url, { signal: abortar.signal });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error de búsqueda");
+        items = data.items || [];
+        activo = items.length ? 0 : -1;
+        pintarLista();
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        items = [];
+        pintarLista();
+        mostrarError(catalogo === "snomed"
+          ? "No se pudo consultar SNOMED-CT. Revisa la conexión con el servidor de HL7 Chile."
+          : "No se pudo consultar la API. Revisa que WAMP/Apache esté activo.");
+      } finally {
+        $spinner.classList.remove("on");
+      }
+    }
+
+    $q.addEventListener("input", () => {
+      const texto = $q.value.trim();
+      $ficha.classList.remove("show");
+      clearTimeout(timer);
+      if (texto.length < 2) {
+        items = [];
+        pintarLista();
+        $vacio.hidden = true;
+        return;
+      }
+      timer = setTimeout(() => buscar(texto), cfg().debounce);
+    });
+
+    $q.addEventListener("keydown", (e) => {
+      if (!items.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activo = (activo + 1) % items.length;
+        pintarLista();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activo = (activo - 1 + items.length) % items.length;
+        pintarLista();
+      } else if (e.key === "Enter" && activo >= 0) {
+        e.preventDefault();
+        seleccionar(items[activo]);
+      } else if (e.key === "Escape") {
+        items = [];
+        pintarLista();
+      }
+    });
+
+    document.getElementById("copiar").addEventListener("click", async () => {
+      const codigo = (catalogo === "snomed" && seleccionado && seleccionado.cie10)
+        ? seleccionado.cie10
+        : document.getElementById("ficha-codigo").textContent;
+      const boton = document.getElementById("copiar");
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(codigo);
+        ok = true;
+      } catch {
+        const auxiliar = document.createElement("textarea");
+        auxiliar.value = codigo;
+        auxiliar.setAttribute("readonly", "");
+        auxiliar.style.position = "fixed";
+        auxiliar.style.left = "-9999px";
+        document.body.appendChild(auxiliar);
+        auxiliar.select();
+        ok = document.execCommand("copy");
+        auxiliar.remove();
+      }
+      boton.textContent = ok ? "Copiado" : "No se pudo copiar";
+      setTimeout(() => { boton.textContent = "Copiar código"; }, 1200);
+    });
+
+    document.getElementById("tab-cie10").addEventListener("click", () => aplicarCatalogo("cie10"));
+    document.getElementById("tab-snomed").addEventListener("click", () => aplicarCatalogo("snomed"));
+
+    const inicial = location.hash.replace("#", "") === "snomed" ? "snomed" : "cie10";
+    aplicarCatalogo(inicial, { persistir: false });
+  </script>
+</body>
+</html>
